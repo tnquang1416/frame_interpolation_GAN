@@ -29,16 +29,16 @@ class GeneratorWithCondition_NoNoise_V7(nn.Module):
         stride_size = 2
         
         self.down_sample_blocks = nn.Sequential(
-            nn.Conv2d(self.c * 2, self.nfg * 2, kernel_size=3, stride=1, padding=utils.calculate_padding_conv(64, 64, 3, 1), bias=False),  # size
+            nn.Conv2d(self.c * 2, self.nfg * 2, kernel_size=3, stride=1, padding=1, bias=False),  # size
             nn.BatchNorm2d(self.nfg * 2),
             nn.LeakyReLU(0.02, inplace=True),
-            nn.Conv2d(self.nfg * 2, self.nfg * 2, kernel_size=filter_size, stride=stride_size, padding=utils.calculate_padding_conv(64, 32, 4, 2), bias=False),  # size/2
+            nn.Conv2d(self.nfg * 2, self.nfg * 2, kernel_size=filter_size, stride=stride_size, padding=1, bias=False),  # size/2
             nn.BatchNorm2d(self.nfg * 2),
             nn.LeakyReLU(0.02, inplace=True),
-            nn.Conv2d(self.nfg * 2, self.nfg * 4, kernel_size=filter_size, stride=stride_size, padding=utils.calculate_padding_conv(32, 16, 4, 2), bias=False),  # size/2
+            nn.Conv2d(self.nfg * 2, self.nfg * 4, kernel_size=filter_size, stride=stride_size, padding=1, bias=False),  # size/2
             nn.BatchNorm2d(self.nfg * 4),
             nn.LeakyReLU(0.02, inplace=True),
-            nn.Conv2d(self.nfg * 4, self.nfg * 8, kernel_size=filter_size, stride=stride_size, padding=utils.calculate_padding_conv(16, 8, 4, 2), bias=False),  # size/2
+            nn.Conv2d(self.nfg * 4, self.nfg * 8, kernel_size=filter_size, stride=stride_size, padding=1, bias=False),  # size/2
             nn.BatchNorm2d(self.nfg * 8),
             nn.LeakyReLU(0.02, inplace=True)
             )

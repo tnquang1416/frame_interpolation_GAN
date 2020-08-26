@@ -15,15 +15,6 @@ from PIL import Image
 import utils.calculator as cal
 
 
-def calculate_padding_conv(w_in, w_out, kernel_size, stride):
-        '''
-        w_out = (w_in-F+2P) / S + 1
-        w_out: width of output
-        w_in: width of input 
-        '''
-        return ((w_out - 1) * stride - w_in + kernel_size) // 2;
-
-
 def transform_tensor_to_img(tensor):
     if tensor is None:
         return None
