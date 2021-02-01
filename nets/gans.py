@@ -140,7 +140,7 @@ class GenNet():
         for t_epoch in range(no_epochs):
             epoch = t_epoch + current_progress
             temp_log = ""
-            for i, imgs in enumerate(dataloader):
+            for i, imgs in enumerate(self.data_loader):
                 temp_log = self._train_one_batch(imgs, epoch, i, dataloader.__len__())
                     
             self.save_models(epoch)
