@@ -106,7 +106,7 @@ class GenNet():
             return self.testing_dataset
         
         print("Loading testing dataset: %s" % self.test_data_path)
-        self.testing_dataset = dataset_handler.ImageDatasetLoader(self.opt).loadFirstPatchesWithFullImg(self.test_data_path, no_patches=-1)
+        self.testing_dataset = dataset_handler.ImageDatasetLoader(self.opt).loadImageDatasetForNoNoise(self.test_data_path)
         print("Done.")
         
         return self.testing_dataset
