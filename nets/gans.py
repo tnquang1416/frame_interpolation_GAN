@@ -146,7 +146,7 @@ class GenNet():
             self.save_models(epoch)
             self._write_to_file(temp_log)
             
-            if (self.opt.test_interval > 0 and epoch % self.opt.test_interval == 0) : training_observer.notify(self, epoch, multi_thread=True)
+        # end training
         
         return self.generator, self.discriminator;
     
