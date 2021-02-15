@@ -20,8 +20,8 @@ import utils.utils as utils
 
 
 class Dataset(Enum):
-    D_UCF101_BODY_TRAIN = 'D:/gan_testing/data/ucf101_body_motion/train'
-    D_UCF101_BODY_TEST = 'D:/gan_testing/data/ucf101_body_motion/test_49'
+    D_UCF101_BODY_TRAIN = 'Put the path of your training dataset directory here.'
+    D_UCF101_BODY_TEST = 'Put the path of your testing dataset directory here.'
 
 
 # Custom crop image transformation
