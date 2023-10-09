@@ -20,7 +20,8 @@ from torch.utils.data import DataLoader
 import nets.generators as generators
 import nets.discriminators as discriminators
 import utils.utils as utils
-import data.dataset_handler as dataset_handler
+#import data.dataset_handler as dataset_handler
+import data.frame_dataset as frame_dataset
 import utils.loss as loss
 
 
@@ -29,8 +30,8 @@ class GenNet():
     def __init__(self, opt):
         self.opt = opt
         self.path = "./train/" + self.opt.path
-        self.data_path = dataset_handler.Dataset.D_UCF101_BODY_TRAIN.value
-        self.test_data_path = dataset_handler.Dataset.D_UCF101_BODY_TEST.value
+        self.data_path = frame_dataset.Paths.TRAIN_DATA_PATH.value
+        self.test_data_path = frame_dataset.Paths.TEST_DATA_PATH.value
         self.generator = generators.GeneratorWithCondition_NoNoise_V7(self.opt)
         self.discriminator = discriminators.DisCriminatorWithCondition_V2(self.opt)
         self.cudaUsed = torch.cuda.is_available() and self.opt.isCudaUsed
@@ -41,7 +42,10 @@ class GenNet():
         self.data_loader = None
         self.testing_dataset = None
         
+        
+        
         if self.cudaUsed:
+            print('using cuda')
             self.generator = self.generator.cuda()
             self.discriminator = self.discriminator.cuda()
             self.adversarial_loss = nn.BCEWithLogitsLoss().cuda()
@@ -95,8 +99,8 @@ class GenNet():
             return self.data_loader
         
         print("Loading training dataset: %s" % self.data_path)
-        dataset = dataset_handler.ImageDatasetLoader(self.opt).loadImageDatasetForNoNoise(self.data_path);
-        self.data_loader = DataLoader(dataset=dataset, batch_size=self.opt.batch_size, shuffle=True, num_workers=0)
+        #dataset = dataset_handler.ImageDatasetLoader(self.opt).loadImageDatasetForNoNoise(self.data_path);
+        self.data_loader = DataLoader(dataset=frame_dataset.FrameDataset(self.opt), batch_size=self.opt.batch_size, shuffle=True, num_workers=0)
         print("Done.")
         
         return self.data_loader    
@@ -106,7 +110,7 @@ class GenNet():
             return self.testing_dataset
         
         print("Loading testing dataset: %s" % self.test_data_path)
-        self.testing_dataset = dataset_handler.ImageDatasetLoader(self.opt).loadImageDatasetForNoNoise(self.test_data_path)
+        #self.testing_dataset = dataset_handler.ImageDatasetLoader(self.opt).loadImageDatasetForNoNoise(self.test_data_path)
         print("Done.")
         
         return self.testing_dataset
@@ -120,11 +124,17 @@ class GenNet():
         print(self.generator)
         print(self.discriminator)
         
+        print('has cuda: '+str(torch.cuda.is_available())+" "+str(self.opt.isCudaUsed))
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        print(torch.cuda.get_device_name(torch.cuda.current_device()))
+
+        
         self.generator.train()
         self.discriminator.train()
 
         self.load_training_dataset()
-        self.load_testing_dataset()
+        print('loaded training data')
+        #self.load_testing_dataset()
         
         if current_progress <= 0:
             no_epochs = self.opt.n_epochs
@@ -138,10 +148,11 @@ class GenNet():
         #  Training
         # ----------    
         for t_epoch in range(no_epochs):
+            print('epoch: '+str(t_epoch))
             epoch = t_epoch + current_progress
             temp_log = ""
             for i, imgs in enumerate(self.data_loader):
-                temp_log = self._train_one_batch(imgs, epoch, i, dataloader.__len__())
+                temp_log = self._train_one_batch(imgs, epoch, i, self.data_loader.__len__())
                     
             self.save_models(epoch)
             self._write_to_file(temp_log)
@@ -208,7 +219,7 @@ class GenNet():
         self._optimizer_D.step()  # update D's weights
                 
         # Show progress
-        psnr = utils.cal_psnr_tensor(gen_imgs.data[0].cpu(), expectedOutput.data[0].cpu())
+        psnr = utils.cal_psnr_tensor(gen_imgs.data[0].cuda(), expectedOutput.data[0].cuda())
         temp_log = ("V3: [Epoch %d] [Batch %d/%d] [D loss (real/fake): (%f, %f)] [G loss (adv_loss): %f (%f)] [psnr: %f]" 
                     % (epoch, batch, total_batch, real_loss.item(), fake_loss.item(), g_loss.item(), adv_loss.item(), psnr))
         if (batch % 100 == 0):
@@ -217,13 +228,20 @@ class GenNet():
         # Display result (input and output) after every opt.sample_intervals
         batches_done = epoch * total_batch + batch
         if batches_done % self.opt.sample_interval == 0:
-            save_image(gen_imgs.data[:25], self.path + "/l_%d.png" % batches_done, nrow=5, normalize=True)
+            save_image(pres.data[:25], self.path + "/l_%da.png" % batches_done, nrow=5, normalize=True)
+            save_image(lats.data[:25], self.path + "/l_%dc.png" % batches_done, nrow=5, normalize=True)
+            save_image(mids.data[:25], self.path + "/l_%db.png" % batches_done, nrow=5, normalize=True)
+            save_image(mids.data[:25], self.path + "/l_%de.png" % batches_done, nrow=5, normalize=True)
+            save_image(gen_imgs.data[:25], self.path + "/l_%dd.png" % batches_done, nrow=5, normalize=True)
             print("Saved l_%d.png" % batches_done)
             print(temp_log)
             
         return temp_log
     
     def _cal_generator_loss(self, output, ground_truth, valid_label):
+        #print(self.discriminator(output).size())
+        #print(valid_label.size())
+        
         adv_loss = self.adversarial_loss(self.discriminator(output), valid_label)
         g_loss = self.opt.adv_lambda * adv_loss
         g_loss = g_loss + self.opt.l1_lambda * self.l1_loss(output, ground_truth)
@@ -231,6 +249,7 @@ class GenNet():
         g_loss = g_loss + self.opt.ms_ssim_lambda * self.ms_ssim(output, ground_truth)
             
         return adv_loss, g_loss;
+            
     
     def _cal_discriminator_loss(self, ground_truth_distingue, fake_distingue, valid_label, fake_label):            
         real_loss = self.adversarial_loss(ground_truth_distingue, valid_label)
@@ -245,6 +264,7 @@ class GenNet():
         :param output_path: saved directory path
         '''
         outpath = self.opt.default_model_path if output_path is None else output_path
+        print('saving models: '+outpath)
         os.makedirs(outpath, exist_ok=True)
         
         state_gen = {'epoch': epoch + 1,

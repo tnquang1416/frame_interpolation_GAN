@@ -28,10 +28,10 @@ import torchvision.transforms as transforms
 from torchvision.transforms import functional as TF
 from torch.autograd import Variable
 
-dataset_path = "dataset_path"
-output_path = "dir_path"
+dataset_path = "test/kinetics2"
+output_path = "output"
 
-net_path = "frame_intepolation_path.pt"
+net_path = "models_test/gennet_gen_imagestry.pt" #"frame_intepolation_path.pt"
 ref_net_path = "refinement_path.pt"
 
 
@@ -75,12 +75,12 @@ def transformImage(img, h, w):
     return transTensor(transResize(img)).numpy();
 
 def calculate_padding_conv(w_in, w_out, kernel_size, stride):
-	'''
-	w_out = (w_in-F+2P) / S + 1
-	w_out: width of output
-	w_in: width of input 
-	'''
-	return ((w_out - 1) * stride - w_in + kernel_size) // 2;
+    '''
+    w_out = (w_in-F+2P) / S + 1
+    w_out: width of output
+    w_in: width of input 
+    '''
+    return ((w_out - 1) * stride - w_in + kernel_size) // 2;
 
 # Generator network
 class GeneratorWithCondition_NoNoise_V7(nn.Module):
@@ -283,126 +283,126 @@ class UnetSkipConnectionBlock(nn.Module):
             return self.model(x)
         else:  # add skip connections
             return torch.cat([x, self.model(x)], 1)  # @UndefinedVariable
-	#end
-	
+    #end
+    
 #end
 
 def transform_tensor_to_img(tensor):
-	if tensor is None:
-		return None
+    if tensor is None:
+        return None
 
-	temp = tensor if tensor.get_device() == -1 else tensor.cpu()  # copy to cpu if neccessary
-	return transforms.ToPILImage()(temp).convert("RGB")
+    temp = tensor if tensor.get_device() == -1 else tensor.cpu()  # copy to cpu if neccessary
+    return transforms.ToPILImage()(temp).convert("RGB")
 
 def cal_psnr_tensor(img1, img2):
-	'''
-	Calculate PSNR from two tensors of images
-	:param img1: tensor
-	:param img2: tensor
-	'''
-	diff = (img1 - img2)
-	diff = diff ** 2
+    '''
+    Calculate PSNR from two tensors of images
+    :param img1: tensor
+    :param img2: tensor
+    '''
+    diff = (img1 - img2)
+    diff = diff ** 2
 
-	if diff.sum().item() == 0:
-		return float('inf')
+    if diff.sum().item() == 0:
+        return float('inf')
 
-	rmse = diff.sum().item() / (img1.shape[0] * img1.shape[1] * img1.shape[2])
-	psnr = 20 * np.log10(1) - 10 * np.log10(rmse)
+    rmse = diff.sum().item() / (img1.shape[0] * img1.shape[1] * img1.shape[2])
+    psnr = 20 * np.log10(1) - 10 * np.log10(rmse)
 
-	return psnr
+    return psnr
 
 
 def cal_psnr_img(img1, img2):
-	'''
-	Calculate PSNR from two image
-	:param img1: numpy array
-	:param img2: numpy array
-	'''
-	# img1 and img2 have range [0, 255]
-	img1 = img1.astype(np.float64)
-	img2 = img2.astype(np.float64)
-	mse = np.mean((img1 - img2) ** 2)
+    '''
+    Calculate PSNR from two image
+    :param img1: numpy array
+    :param img2: numpy array
+    '''
+    # img1 and img2 have range [0, 255]
+    img1 = img1.astype(np.float64)
+    img2 = img2.astype(np.float64)
+    mse = np.mean((img1 - img2) ** 2)
 
-	if mse == 0:
-		return float('inf')
+    if mse == 0:
+        return float('inf')
 
-	return 20 * math.log10(255.0 / math.sqrt(mse))
-	
+    return 20 * math.log10(255.0 / math.sqrt(mse))
+    
 def _ssim(img1, img2):
-	'''
-	K1 = 0.01
-	K2 = 0.03
-	L = 255
-	:param img1: [0,255]
-	:param img2: [0,255]
-	'''
-	C1 = (0.01 * 255) ** 2
-	C2 = (0.03 * 255) ** 2
+    '''
+    K1 = 0.01
+    K2 = 0.03
+    L = 255
+    :param img1: [0,255]
+    :param img2: [0,255]
+    '''
+    C1 = (0.01 * 255) ** 2
+    C2 = (0.03 * 255) ** 2
 
-	img1 = img1.astype(np.float64)
-	img2 = img2.astype(np.float64)
-	kernel = cv2.getGaussianKernel(11, 1.5)
-	window = np.outer(kernel, kernel.transpose())
+    img1 = img1.astype(np.float64)
+    img2 = img2.astype(np.float64)
+    kernel = cv2.getGaussianKernel(11, 1.5)
+    window = np.outer(kernel, kernel.transpose())
 
-	mu1 = cv2.filter2D(img1, -1, window)[5:-5, 5:-5]  # valid
-	mu2 = cv2.filter2D(img2, -1, window)[5:-5, 5:-5]
-	mu1_sq = mu1 ** 2
-	mu2_sq = mu2 ** 2
-	mu1_mu2 = mu1 * mu2
-	sigma1_sq = cv2.filter2D(img1 ** 2, -1, window)[5:-5, 5:-5] - mu1_sq
-	sigma2_sq = cv2.filter2D(img2 ** 2, -1, window)[5:-5, 5:-5] - mu2_sq
-	sigma12 = cv2.filter2D(img1 * img2, -1, window)[5:-5, 5:-5] - mu1_mu2
+    mu1 = cv2.filter2D(img1, -1, window)[5:-5, 5:-5]  # valid
+    mu2 = cv2.filter2D(img2, -1, window)[5:-5, 5:-5]
+    mu1_sq = mu1 ** 2
+    mu2_sq = mu2 ** 2
+    mu1_mu2 = mu1 * mu2
+    sigma1_sq = cv2.filter2D(img1 ** 2, -1, window)[5:-5, 5:-5] - mu1_sq
+    sigma2_sq = cv2.filter2D(img2 ** 2, -1, window)[5:-5, 5:-5] - mu2_sq
+    sigma12 = cv2.filter2D(img1 * img2, -1, window)[5:-5, 5:-5] - mu1_mu2
 
-	ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
-	return ssim_map.mean()
+    ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
+    return ssim_map.mean()
 
 
 def cal_ssim_img(img1, img2):
-	'''calculate SSIM
-	the same outputs as MATLAB's
-	:param img1, img2: [0, 255]
-	src: https://cvnote.ddlee.cn/2019/09/12/PSNR-SSIM-Python.html#numpy-implementation-1
-	'''
-	if not img1.shape == img2.shape:
-		raise ValueError('Input images must have the same dimensions.')
-	if img1.ndim == 2:
-		return _ssim(img1, img2)
-	elif img1.ndim == 3:
-		if img1.shape[2] == 3:
-			ssims = []
-			for i in range(3):
-				ssims.append(_ssim(img1, img2))
-			return np.array(ssims).mean()
-		elif img1.shape[2] == 1:
-			return _ssim(np.squeeze(img1), np.squeeze(img2))
-	else:
-		raise ValueError('Wrong input image dimensions.')
-	
+    '''calculate SSIM
+    the same outputs as MATLAB's
+    :param img1, img2: [0, 255]
+    src: https://cvnote.ddlee.cn/2019/09/12/PSNR-SSIM-Python.html#numpy-implementation-1
+    '''
+    if not img1.shape == img2.shape:
+        raise ValueError('Input images must have the same dimensions.')
+    if img1.ndim == 2:
+        return _ssim(img1, img2)
+    elif img1.ndim == 3:
+        if img1.shape[2] == 3:
+            ssims = []
+            for i in range(3):
+                ssims.append(_ssim(img1, img2))
+            return np.array(ssims).mean()
+        elif img1.shape[2] == 1:
+            return _ssim(np.squeeze(img1), np.squeeze(img2))
+    else:
+        raise ValueError('Wrong input image dimensions.')
+    
 def cal_metrics(ground_truth, gen_imgs):
-	if (gen_imgs.data[0].shape[1] != ground_truth.data[0].shape[1]):
-		warn('Different in size of output and ground truth.')
+    if (gen_imgs.data[0].shape[1] != ground_truth.data[0].shape[1]):
+        warn('Different in size of output and ground truth.')
 
-	gen_img = transform_tensor_to_img(gen_imgs.data[0])
-	ground_truth_img = transform_tensor_to_img(ground_truth.data[0])
+    gen_img = transform_tensor_to_img(gen_imgs.data[0])
+    ground_truth_img = transform_tensor_to_img(ground_truth.data[0])
 
-	psnr_tensor1 = cal_psnr_tensor(gen_imgs.data[0], ground_truth.data[0])
-	ssim_img1 = cal_ssim_img(np.array(gen_img), np.array(ground_truth_img))
+    psnr_tensor1 = cal_psnr_tensor(gen_imgs.data[0], ground_truth.data[0])
+    ssim_img1 = cal_ssim_img(np.array(gen_img), np.array(ground_truth_img))
 
-	return psnr_tensor1, ssim_img1
+    return psnr_tensor1, ssim_img1
 
 # Load network for testing
 def load_gen_for_evaluation(model):
-	'''
-	Load model for evaluation
-	'''
-	
-	path = net_path
-	checkpoint = torch.load(path)
-	start_epoch = checkpoint['epoch']
-	model.load_state_dict(checkpoint['state_dict'])
-	model.cuda()
-	model.eval()
-	return start_epoch, model
+    '''
+    Load model for evaluation
+    '''
+    
+    path = net_path
+    checkpoint = torch.load(path)
+    start_epoch = checkpoint['epoch']
+    model.load_state_dict(checkpoint['state_dict'])
+    model.cuda()
+    model.eval()
+    return start_epoch, model
 
 
 def run_with_one_sample(frame1, frame2, gt_frame, index, file_name, model, model2, ref_model, step=1):
@@ -423,135 +423,145 @@ def _run_with_one_sample_with_one_model(frame1, frame2, gt_frame, index, file_na
     temp = torch.cat(((frame1 + frame2)/2, gt_frame, gen_imgs))
 
   return psnr, ssim, gen_time, gen_imgs, None
-	
+    
 def _run_with_one_sample_with_refinement(frame1, frame2, gt_frame, index, file_name, gen_net, ref_net, step):
-	temp_start = time.time()
-	gen_imgs = gen_net(frame1, frame2)
-	ref_imgs = ref_net(gen_imgs)
-	gen_time = time.time() - temp_start
-	psnr, ssim = cal_metrics(gt_frame, ref_imgs)
+    temp_start = time.time()
+    gen_imgs = gen_net(frame1, frame2)
+    ref_imgs = ref_net(gen_imgs)
+    gen_time = time.time() - temp_start
+    psnr, ssim = cal_metrics(gt_frame, ref_imgs)
 
-	return psnr, ssim, gen_time, gen_imgs, ref_imgs
+    return psnr, ssim, gen_time, gen_imgs, ref_imgs
 
 def run_with_load(path, generator, predictor=None, refinement=None, n_epoch=-1):
-	if (not os.path.isdir(path)):
-		raise FileNotFoundError("ImageDatasetLoader: Cannot locate %s" % (path))
-	gen_name = "gennet_gen_images53"
-	out_path = output_path
-	os.makedirs(out_path, exist_ok=True)
+    if (not os.path.isdir(path)):
+        raise FileNotFoundError("ImageDatasetLoader: Cannot locate %s" % (path))
+    gen_name = "gennet_gen_images53"
+    out_path = output_path
+    os.makedirs(out_path, exist_ok=True)
 
-	print("Start to test model %s at %d epochth..." % (generator, n_epoch))
-	if refinement is not None: print("Start to test model %s..." % (refinement))
-	log = "Start to test model %s at %d epochth..." % (generator, n_epoch)
-	log += "\nFile\tPSNR\tSSIM"
-	print("Testing....")
-	print("output: " + out_path)
+    print("Start to test model %s at %d epochth..." % (generator, n_epoch))
+    if refinement is not None: print("Start to test model %s..." % (refinement))
+    log = "Start to test model %s at %d epochth..." % (generator, n_epoch)
+    log += "\nFile\tPSNR\tSSIM"
+    print("Testing....")
+    print("output: " + out_path)
 
-	imgs = []
-	h = 0
-	w = 0
-	count = 0
-	psnr_list = []
-	ssim_list = []
-	time_list = []
-	current_progress = 0
+    imgs = []
+    h = 0
+    w = 0
+    count = 0
+    psnr_list = []
+    ssim_list = []
+    time_list = []
+    current_progress = 0
 
-	files = glob.glob(path + '/*.jpg')
-	files.extend(glob.glob(path + "/*.png"))
-	files.sort()
-	print("Loaded %d frames." % len(files))
+    files = glob.glob(path + '/*.jpg')
+    files.extend(glob.glob(path + "/*.png"))
+    files.sort()
+    print("Loaded %d frames." % len(files))
  
-	file_name1 = None
-	file_name2 = None
+    file_name1 = None
+    file_name2 = None
 
-	Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
+    Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
 
-	for file_name in files:
-		img = Image.open(file_name)
-		imgs.append(img.copy())
-		img.load()
-		img.close()
-		count+=1
+    for file_name in files:
+        img = Image.open(file_name)
+        imgs.append(img.copy())
+        img.load()
+        img.close()
+        count+=1
     
-		process = 100.0 * count / len(files)
-		if int(process) - current_progress >= 10:
-			print(str(round(process)) + "%")
-			current_progress = int(process)
+        process = 100.0 * count / len(files)
+        if int(process) - current_progress >= 10:
+            print(str(round(process)) + "%")
+            current_progress = int(process)
    
-		temp_name = get_sub_name_from_path(file_name)
+        temp_name = get_sub_name_from_path(file_name)
+        
+        print('num imgs: '+str(len(imgs)))
 
-		if len(imgs) == 1:
-			file_name1 = temp_name
-		elif len(imgs) == 2 and file_name1 == temp_name:
-			file_name2 = temp_name
-		elif len(imgs) == 2:
-			del imgs[0]
-			file_name1 = temp_name
-			file_name2 = None
-		elif len(imgs) > 2 and file_name2 != temp_name:
-			imgs.clear()
-			file_name1 = None
-			file_name2 = None
-		else:
-			# process data
-			frame1 = Variable(Tensor(transformImage(imgs[0], h, w)));
-			gt_frame = Variable(Tensor(transformImage(imgs[1], h, w)));
-			frame2 = Variable(Tensor(transformImage(imgs[2], h, w)));
-			frame1 = frame1.view(1, frame1.shape[0], frame1.shape[1], frame1.shape[2])
-			gt_frame = gt_frame.view(1, gt_frame.shape[0], gt_frame.shape[1], gt_frame.shape[2])
-			frame2 = frame2.view(1, frame2.shape[0], frame2.shape[1], frame2.shape[2])
-			
-			out = torch.rand(gt_frame.shape)
-			ref = torch.rand(gt_frame.shape)
-			temp_ref = None
-			psnr=[]
-			ssim=[]
-			time=[]
-			for i in range(round(gt_frame.shape[2]/64)):
-				for j in range(round(gt_frame.shape[3]/64)):
-					dx = i * 64
-					dy = j * 64
-					temp1 = frame1[:, :, dx:dx+64, dy:dy+64].clone()
-					temp2 = frame1[:, :, dx:dx+64, dy:dy+64].clone()
-					temp_gt = gt_frame[:, :, dx:dx+64, dy:dy+64].clone()
-					temp_psnr, temp_ssim, temp_time, temp_out, temp_ref = run_with_one_sample(temp1, temp2, temp_gt, count, temp_name, generator, predictor, refinement)
-					psnr.append(temp_psnr)
-					ssim.append(temp_ssim)
-					time.append(temp_time)
-					out[:, :, dx:dx+64, dy:dy+64] = temp_out.clone()[:,:,:temp1.shape[2],:temp1.shape[3]]
-					if temp_ref is not None: ref[:, :, dx:dx+64, dy:dy+64] = temp_ref.clone()[:,:,:temp1.shape[2],:temp1.shape[3]]
-			# update tracker
-			if True:
-				temp = torch.cat(((frame1 + frame2)/2, gt_frame, out.cuda())) if temp_ref is None else torch.cat((gt_frame, out.cuda(), ref.cuda()))
-				save_image(temp, "%s/all_%s_%d.png" % (output_path, temp_name, count), nrow=3, padding=10)
-			del imgs[0]
-			file_name2 = temp_name
-			file_name1 = file_name2
-			# generate data
-			log += "\n%s_%d\t%f\t%f" % (temp_name, count, np.average(np.array(psnr)), np.average(np.array(ssim)))
-			psnr_list.append(np.average(np.array(psnr)))
-			ssim_list.append(np.average(np.array(ssim)))
-			time_list.append(np.average(np.array(time)))
+        if len(imgs) == 1:
+            file_name1 = temp_name
+        elif len(imgs) == 2 and file_name1 == temp_name:
+            file_name2 = temp_name
+        elif len(imgs) == 2:
+            del imgs[0]
+            file_name1 = temp_name
+            file_name2 = None
+        elif len(imgs) > 2 and file_name2 != temp_name:
+            imgs.clear()
+            file_name1 = None
+            file_name2 = None
+        else:
+            # process data
+            print('process data')
+            imgs[0].save("img0.jpg") 
+            imgs[1].save("img1.jpg") 
+            imgs[2].save("img2.jpg") 
+            
+            frame1 = Variable(Tensor(transformImage(imgs[0], h, w)));
+            gt_frame = Variable(Tensor(transformImage(imgs[1], h, w)));
+            frame2 = Variable(Tensor(transformImage(imgs[2], h, w)));
+            frame1 = frame1.view(1, frame1.shape[0], frame1.shape[1], frame1.shape[2])
+            gt_frame = gt_frame.view(1, gt_frame.shape[0], gt_frame.shape[1], gt_frame.shape[2])
+            frame2 = frame2.view(1, frame2.shape[0], frame2.shape[1], frame2.shape[2])
+            
+            out = torch.rand(gt_frame.shape)
+            ref = torch.rand(gt_frame.shape)
+            temp_ref = None
+            psnr=[]
+            ssim=[]
+            time=[]
+            for i in range(round(gt_frame.shape[2]/64)):
+                for j in range(round(gt_frame.shape[3]/64)):
+                    dx = i * 64
+                    dy = j * 64
+                    temp1 = frame1[:, :, dx:dx+64, dy:dy+64].clone()
+                    temp2 = frame2[:, :, dx:dx+64, dy:dy+64].clone()
+                    temp_gt = gt_frame[:, :, dx:dx+64, dy:dy+64].clone()
+                    temp_psnr, temp_ssim, temp_time, temp_out, temp_ref = run_with_one_sample(temp1, temp2, temp_gt, count, temp_name, generator, predictor, refinement)
+                    psnr.append(temp_psnr)
+                    ssim.append(temp_ssim)
+                    time.append(temp_time)
+                    out[:, :, dx:dx+64, dy:dy+64] = temp_out.clone()[:,:,:temp1.shape[2],:temp1.shape[3]]
+                    if temp_ref is not None: ref[:, :, dx:dx+64, dy:dy+64] = temp_ref.clone()[:,:,:temp1.shape[2],:temp1.shape[3]]
+            # update tracker
+            if True:
+                temp = torch.cat((frame1, frame2, gt_frame, out.cuda())) if temp_ref is None else torch.cat((gt_frame, out.cuda(), ref.cuda()))
+                save_image(temp, "%s/all_%s_%dd.png" % (output_path, temp_name, count), nrow=2, padding=10)
+                save_image(frame1, "%s/all_%s_%da.png" % (output_path, temp_name, count))
+                save_image(out.cuda(), "%s/all_%s_%db.png" % (output_path, temp_name, count))
+                save_image(frame2, "%s/all_%s_%dc.png" % (output_path, temp_name, count))
+            del imgs[0]
+            file_name2 = temp_name
+            file_name1 = file_name2
+            # generate data
+            log += "\n%s_%d\t%f\t%f" % (temp_name, count, np.average(np.array(psnr)), np.average(np.array(ssim)))
+            psnr_list.append(np.average(np.array(psnr)))
+            ssim_list.append(np.average(np.array(ssim)))
+            time_list.append(np.average(np.array(time)))
 
-	minPSNR = min(psnr_list)
-	maxPSNR = max(psnr_list)
-	avgPSNR = np.average(np.array(psnr_list))
-	minSSIM = min(ssim_list)
-	maxSSIM = max(ssim_list)
-	avgSSIM = np.average(np.array(ssim_list))
-	avgTime = np.average(np.array(time_list))
+    minPSNR = min(psnr_list)
+    maxPSNR = max(psnr_list)
+    avgPSNR = np.average(np.array(psnr_list))
+    minSSIM = min(ssim_list)
+    maxSSIM = max(ssim_list)
+    avgSSIM = np.average(np.array(ssim_list))
+    avgTime = np.average(np.array(time_list))
 
-	print("Test on %d patches." % (len(files)))
-	print("Min/Max/Avg PSNR value of %s is %f/%f/%f dB" % (gen_name, minPSNR, maxPSNR, avgPSNR))
-	print("Min/Max/Avg SSIM value of %s is %f/%f/%f dB" % (gen_name, minSSIM, maxSSIM, avgSSIM))
-	print("Average generate time: %f s." % (avgTime))
-	print("Done.")
+    print("Test on %d patches." % (len(files)))
+    print("Min/Max/Avg PSNR value of %s is %f/%f/%f dB" % (gen_name, minPSNR, maxPSNR, avgPSNR))
+    print("Min/Max/Avg SSIM value of %s is %f/%f/%f dB" % (gen_name, minSSIM, maxSSIM, avgSSIM))
+    print("Average generate time: %f s." % (avgTime))
+    print("Done.")
 
-	out = open(out_path + "/log.txt", 'w')
-	out.write(log)
-	out.close();
+    out = open(out_path + "/log.txt", 'w')
+    out.write(log)
+    out.close();
    
-	return;
+    return;
 
 def test_with_my_proposed():
   path = net_path
@@ -567,33 +577,34 @@ def test_with_my_proposed():
 #end
 
 def test_with_my_proposed_with_refinement():
-	gen_path = net_path
-	ref_path = ref_net_path
-	
-	# load generator
-	ckp_gen = torch.load(gen_path)
-	epoch = ckp_gen['epoch']
-	gen_net = GeneratorWithCondition_NoNoise_V7()
-	gen_net.load_state_dict(ckp_gen['state_dict'])
-	gen_net = gen_net.cuda()
-	gen_net.eval()
-	print('Generator loaded.')
-	
-	# load refinement
-	ckp_ref = torch.load(ref_path)
-	ref_net = UnetGenerator(3, 3)
-	ref_net.load_state_dict(ckp_ref['state_dict'])
-	ref_net = ref_net.cuda()
-	ref_net.eval()
-	print('Refinement network pix2pix loaded.')
-	
-	# run test
-	run_with_load(path=dataset_path, generator=gen_net, n_epoch=epoch, refinement=ref_net)
-	
-	
+    gen_path = net_path
+    ref_path = ref_net_path
+    
+    # load generator
+    ckp_gen = torch.load(gen_path)
+    epoch = ckp_gen['epoch']
+    gen_net = GeneratorWithCondition_NoNoise_V7()
+    gen_net.load_state_dict(ckp_gen['state_dict'])
+    gen_net = gen_net.cuda()
+    gen_net.eval()
+    print('Generator loaded.')
+    
+    # load refinement
+    ckp_ref = torch.load(ref_path)
+    ref_net = UnetGenerator(3, 3)
+    ref_net.load_state_dict(ckp_ref['state_dict'])
+    ref_net = ref_net.cuda()
+    ref_net.eval()
+    print('Refinement network pix2pix loaded.')
+    
+    # run test
+    run_with_load(path=dataset_path, generator=gen_net, n_epoch=epoch, refinement=ref_net)
+    
+    
 #end
 
 #run_test(1)
 print(output_path)
 os.makedirs(output_path, exist_ok=True);
-test_with_my_proposed_with_refinement()
+test_with_my_proposed()
+#test_with_my_proposed_with_refinement()

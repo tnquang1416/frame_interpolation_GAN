@@ -20,8 +20,8 @@ import utils.utils as utils
 
 
 class Dataset(Enum):
-    D_UCF101_BODY_TRAIN = 'Put the path of your training dataset directory here.'
-    D_UCF101_BODY_TEST = 'Put the path of your testing dataset directory here.'
+    D_UCF101_BODY_TRAIN = '../data/frames/ghibli'
+    D_UCF101_BODY_TEST = '../data/frames/ghibli/test'
 
 
 # Custom crop image transformation
@@ -97,13 +97,15 @@ class ImageDatasetLoader:
             img.load()
             
         # end
+        
+        print('loaded dataset: '+str(len(dataset)))
                 
         if len(dataset) == 0:
             warn("No data loaded.")
             return dataset
-        
+
         self.dataset = np.asarray(dataset)
-        
+
         return self.dataset;
 
     

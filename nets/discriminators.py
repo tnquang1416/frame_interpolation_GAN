@@ -13,7 +13,7 @@ class DisCriminatorWithCondition_V2(nn.Module):
 
     def __init__(self, opt):
         super(DisCriminatorWithCondition_V2, self).__init__()
-        self.nfg = 64  # the size of feature map
+        self.nfg = 128  # the size of feature map
         self.c = opt.channels  # output channel
         self.model_path = opt.default_model_path
         self.path = opt.path  # output folders
@@ -36,7 +36,14 @@ class DisCriminatorWithCondition_V2(nn.Module):
             nn.BatchNorm2d(self.nfg * 8),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Dropout2d(0.25),
-            nn.Conv2d(self.nfg * 8, 1, kernel_size=4, stride=1, padding=0, bias=False)
+            
+            nn.Conv2d(self.nfg * 8, self.nfg * 16, kernel_size=4, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(self.nfg * 16),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Dropout2d(0.25),
+            
+            
+            nn.Conv2d(self.nfg * 16, 1, kernel_size=4, stride=1, padding=0, bias=False)
             )
     
     def forward(self, data):
